@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: careerscope-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: careerscope
+      POSTGRES_PASSWORD: careerscope
+      POSTGRES_DB: careerscope
+    ports:
+      - "5432:5432"
+    volumes:
+      - careerscope_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U careerscope"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: careerscope-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://careerscope:careerscope@db:5432/careerscope
+      USE_SQLITE: "false"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/uploads:/backend/uploads
+
+volumes:
+  careerscope_pgdata:

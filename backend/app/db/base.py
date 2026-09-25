@@ -1,0 +1,14 @@
+from app.db.session import Base  # noqa: F401
+from app.models.activity_log import ActivityLog  # noqa: F401
+from app.models.analysis import Analysis  # noqa: F401
+from app.models.job import Job  # noqa: F401
+from app.models.analysis_skill import AnalysisSkill  # noqa: F401
+from app.models.profile import UserProfile  # noqa: F401
+from app.models.resume import Resume  # noqa: F401
+from app.models.roadmap import Roadmap  # noqa: F401
+from app.models.roadmap_item import RoadmapItem  # noqa: F401
+from app.models.saved_job import SavedJob  # noqa: F401
+from app.models.search import Search  # noqa: F401
+from app.models.skill import Skill  # noqa: F401
+from app.models.token_blacklist import TokenBlacklist  # noqa: F401
+from app.models.user import User  # noqa: F401
