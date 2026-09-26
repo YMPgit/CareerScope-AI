@@ -49,10 +49,11 @@ def _profile_out(user: User) -> dict:
     }
 
 
-def _set_cookie_pair(response: Response, user_id: int) -> None:
+def _set_cookie_pair(response: Response, user_id: int, request: Request | None = None) -> None:
     token, _, exp = security.create_access_token(user_id)
     max_age = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
-    set_auth_cookies(response, token, "", max_age)
+    secure = request.url.scheme == "https" if request else settings.is_production
+    set_auth_cookies(response, token, "", max_age, secure=secure)
 
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
@@ -75,7 +76,7 @@ def signup(payload: SignupRequest, request: Request, response: Response, db: Ses
     db.commit()
     db.refresh(user)
 
-    _set_cookie_pair(response, user.id)
+    _set_cookie_pair(response, user.id, request)
 
     if settings.smtp_configured:
         token, _, exp = security.create_token(user.id, "verify", settings.VERIFY_TOKEN_EXPIRE_MINUTES)
@@ -101,7 +102,7 @@ def signin(payload: SigninRequest, request: Request, response: Response, db: Ses
     db.add(ActivityLog(user_id=user.id, activity_type="signin", meta={"source": request.client.host if request.client else None}))
     db.commit()
 
-    _set_cookie_pair(response, user.id)
+    _set_cookie_pair(response, user.id, request)
     return {"user": _profile_out(user)}
 
 
@@ -118,7 +119,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
                 db.commit()
         except Exception:  # noqa: BLE001
             logger.debug("Logout token decode failed")
-    clear_auth_cookies(response)
+    clear_auth_cookies(response, secure=request.url.scheme == "https")
     return {"message": "Signed out successfully."}
 
 
@@ -157,7 +158,7 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
 
 
 @router.post("/reset-password")
-def reset_password(payload: ResetPasswordRequest, response: Response, db: Session = Depends(get_db)):
+def reset_password(payload: ResetPasswordRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     try:
         data = security.decode_token(payload.token)
     except Exception:  # noqa: BLE001
@@ -177,7 +178,7 @@ def reset_password(payload: ResetPasswordRequest, response: Response, db: Sessio
     user.password_hash = security.hash_password(payload.new_password)
     db.commit()
 
-    clear_auth_cookies(response)
+    clear_auth_cookies(response, secure=request.url.scheme == "https")
     return MessageOut(message="Password updated. You can now sign in with your new password.")
 
 

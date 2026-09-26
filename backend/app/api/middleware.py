@@ -56,7 +56,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         # Origin guard for unsafe cross-site requests
         if method in UNSAFE_METHODS:
             origin = request.headers.get("origin")
-            if origin and not is_origin_allowed(origin):
+            if origin and not is_origin_allowed(origin, request):
                 logger.warning("Blocked cross-origin %s %s from %s", method, path, origin)
                 return JSONResponse(status_code=403, content={"detail": "Cross-origin request blocked."})
 
@@ -78,8 +78,9 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         return response
 
 
-def set_auth_cookies(response, token: str, csrf_token: str, max_age_seconds: int) -> None:
-    secure = settings.is_production
+def set_auth_cookies(response, token: str, csrf_token: str, max_age_seconds: int, secure: bool | None = None) -> None:
+    if secure is None:
+        secure = settings.is_production
     response.set_cookie(
         key=SESSION_COOKIE,
         value=token,
@@ -100,9 +101,11 @@ def set_auth_cookies(response, token: str, csrf_token: str, max_age_seconds: int
     )
 
 
-def clear_auth_cookies(response) -> None:
-    response.delete_cookie(SESSION_COOKIE, path="/")
-    response.delete_cookie(CSRF_COOKIE, path="/")
+def clear_auth_cookies(response, secure: bool | None = None) -> None:
+    if secure is None:
+        secure = settings.is_production
+    response.delete_cookie(SESSION_COOKIE, path="/", secure=secure, httponly=True, samesite="lax")
+    response.delete_cookie(CSRF_COOKIE, path="/", secure=secure, httponly=False, samesite="lax")
 
 
 def utcnow_iso() -> str:

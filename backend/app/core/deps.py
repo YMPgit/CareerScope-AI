@@ -73,14 +73,20 @@ def get_client_origin(request: Request) -> str:
     return request.headers.get("origin") or request.headers.get("referer") or ""
 
 
-def is_origin_allowed(origin: str) -> bool:
+def is_origin_allowed(origin: str, request: Request | None = None) -> bool:
     if not origin:
         return True
     try:
-        host = origin.split("://", 1)[1].rstrip("/")
+        host = origin.split("://", 1)[1].rstrip("/").lower()
     except IndexError:
         return True
+    # Same-origin requests (SPA served from the same host as the API) are
+    # always allowed, regardless of CORS_ORIGINS configuration.
+    if request is not None:
+        self_host = (request.headers.get("host") or request.url.netloc or "").lower()
+        if host == self_host or host == f"www.{self_host}":
+            return True
     allowed_hosts = []
     for o in settings.cors_origins_list:
-        allowed_hosts.append(o.split("://", 1)[1].rstrip("/") if "://" in o else o)
+        allowed_hosts.append(o.split("://", 1)[1].rstrip("/").lower() if "://" in o else o.lower())
     return host in allowed_hosts

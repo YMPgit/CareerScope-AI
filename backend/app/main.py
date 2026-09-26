@@ -5,12 +5,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 
 from app.api.middleware import SecurityMiddleware
 from app.api.router import api_router
-from app.core.config import settings
+from app.core.config import settings, BACKEND_DIR
 from app.core.logging import get_logger, setup_logging
 from app.db.session import engine, init_db
 
@@ -72,3 +73,22 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": "Something went wrong on our side. Please try again."},
     )
+
+
+STATIC_DIR = BACKEND_DIR / "static"
+
+if STATIC_DIR.is_dir():
+    assets_dir = STATIC_DIR / "assets"
+    if assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        root = STATIC_DIR.resolve()
+        candidate = (STATIC_DIR / full_path).resolve()
+        if full_path and candidate.is_file() and str(candidate).startswith(str(root)):
+            return FileResponse(candidate)
+        index = root / "index.html"
+        if index.is_file():
+            return FileResponse(index)
+        return JSONResponse(status_code=404, content={"detail": "Not found"})

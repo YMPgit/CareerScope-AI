@@ -61,7 +61,10 @@ class Settings(BaseSettings):
     def sqlalchemy_url(self) -> str:
         if self.USE_SQLITE:
             return "sqlite:///./careerscope.db"
-        return self.DATABASE_URL
+        url = self.DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+        return url
 
     @property
     def cors_origins_list(self) -> list[str]:
