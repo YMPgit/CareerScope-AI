@@ -1,7 +1,10 @@
 import axios, { AxiosError } from 'axios'
 
+const configuredBase = (import.meta.env.VITE_API_BASE_URL as string | undefined || '').trim()
+const apiBase = configuredBase ? `${configuredBase.replace(/\/+$/, '')}/api` : '/api'
+
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL: apiBase,
   withCredentials: true,
   timeout: 90000,
 })
